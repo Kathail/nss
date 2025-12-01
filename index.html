@@ -27,6 +27,10 @@
     <!-- PapaParse for reading CSV files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     
+    <!-- jsPDF for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -188,8 +192,14 @@
 
                         <button onclick="clearFilters()" class="flex-1 sm:flex-none px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-medium">Reset</button>
                         
+                        <!-- PDF Export Button -->
+                        <button onclick="exportPDF()" class="flex-1 sm:flex-none px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium flex items-center justify-center gap-2">
+                            <i data-lucide="file-text" class="h-4 w-4"></i> PDF
+                        </button>
+
+                        <!-- CSV Export Button -->
                         <button onclick="exportFiltered()" class="flex-1 sm:flex-none px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium flex items-center justify-center gap-2">
-                            <i data-lucide="download" class="h-4 w-4"></i> Export
+                            <i data-lucide="download" class="h-4 w-4"></i> CSV
                         </button>
                     </div>
                 </div>
@@ -710,6 +720,35 @@
             });
             
             lucide.createIcons();
+        }
+
+        async function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            doc.setFontSize(18);
+            doc.text("NorthScrape Leads Export", 14, 22);
+            
+            doc.setFontSize(11);
+            doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 30);
+            doc.text(`Total Records: ${filteredData.length}`, 14, 36);
+
+            const tableData = filteredData.map(row => [
+                row.Name || 'Unknown',
+                row.Address || 'N/A',
+                row.Phone || 'N/A',
+                getContactedList().includes(row.id) ? 'Contacted' : 'Pending'
+            ]);
+
+            doc.autoTable({
+                startY: 44,
+                head: [['Business Name', 'Location', 'Phone', 'Status']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { fillColor: [30, 58, 138] },
+            });
+
+            doc.save("leads_export.pdf");
         }
 
         function exportFiltered() {
