@@ -666,7 +666,7 @@
 
                 const phoneCell = `<td class="px-6 py-4">
                     ${hasPhone ? 
-                        `<a href="tel:${row.Phone}" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800 transition-colors">
+                        `<a href="tel:${row.Phone}" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800 transition-colors whitespace-nowrap">
                            <i data-lucide="phone" class="h-3 w-3 mr-1"></i> ${row.Phone}
                          </a>` 
                         : '<span class="text-slate-400 dark:text-slate-600 text-sm italic">N/A</span>'}
