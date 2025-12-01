@@ -642,7 +642,7 @@
                     </button>
                 </td>`;
                 
-                const nameCell = `<td class="px-6 py-4 whitespace-nowrap">
+                const nameCell = `<td class="px-6 py-4">
                     <div class="text-sm font-bold text-slate-900 dark:text-white ${isContacted ? 'line-through decoration-slate-400' : ''}">${row.Name || 'Unknown'}</div>
                     ${row.Website && row.Website !== 'N/A' ? 
                         `<a href="${row.Website}" target="_blank" class="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-1">
@@ -651,10 +651,10 @@
                 </td>`;
 
                 const addressCell = `<td class="px-6 py-4">
-                    <div class="text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate" title="${row.Address}">${row.Address || 'N/A'}</div>
+                    <div class="text-sm text-slate-600 dark:text-slate-400 max-w-xs" title="${row.Address}">${row.Address || 'N/A'}</div>
                 </td>`;
 
-                const phoneCell = `<td class="px-6 py-4 whitespace-nowrap">
+                const phoneCell = `<td class="px-6 py-4">
                     ${hasPhone ? 
                         `<a href="tel:${row.Phone}" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800 transition-colors">
                            <i data-lucide="phone" class="h-3 w-3 mr-1"></i> ${row.Phone}
@@ -662,7 +662,7 @@
                         : '<span class="text-slate-400 dark:text-slate-600 text-sm italic">N/A</span>'}
                 </td>`;
 
-                const actionCell = `<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                const actionCell = `<td class="px-6 py-4 text-right text-sm font-medium">
                     <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.Name + ' ' + row.Address)}" target="_blank" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1">
                         Map <i data-lucide="map" class="h-4 w-4"></i>
                     </a>
