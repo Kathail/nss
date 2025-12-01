@@ -265,7 +265,7 @@
     </main>
 
     <!-- Floating Route Button -->
-    <div id="route-fab" class="fixed bottom-6 right-6 transition-transform duration-300 transform translate-y-24">
+    <div id="route-fab" class="fixed bottom-6 right-6 transition-transform duration-300 transform translate-y-24 z-50">
         <button onclick="launchRoute()" class="group flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full shadow-xl hover:shadow-2xl transition-all">
             <i data-lucide="navigation" class="h-5 w-5"></i>
             <span class="font-bold">Navigate (<span id="route-count">0</span>)</span>
@@ -483,7 +483,6 @@
             const stops = allData.filter(row => routeSet.has(row.id)).map(row => encodeURIComponent(row.Address));
             
             // Construct Google Maps URL
-            // Format: https://www.google.com/maps/dir/Current+Location/Stop1/Stop2/...
             let url = "https://www.google.com/maps/dir/Current+Location/";
             url += stops.join("/");
             
@@ -637,7 +636,6 @@
                            onclick="toggleContacted('${row.id}')">
                 </td>`;
                 
-                // Route Toggle Cell
                 const routeCell = `<td class="px-6 py-4">
                     <button onclick="toggleRoute('${row.id}')" class="p-2 rounded-full transition-colors ${inRoute ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}">
                         <i data-lucide="map-pin" class="h-5 w-5 ${inRoute ? 'fill-current' : ''}"></i>
@@ -695,15 +693,15 @@
                     
                     <div class="grid grid-cols-2 gap-3 mt-4">
                         ${hasPhone ? 
-                        `<a href="tel:${row.Phone}" class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100 font-medium text-sm whitespace-nowrap">
-                           <i data-lucide="phone" class="h-4 w-4"></i> ${row.Phone}
+                        `<a href="tel:${row.Phone}" class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100 font-medium text-xs sm:text-sm text-center">
+                           <i data-lucide="phone" class="h-4 w-4 flex-shrink-0"></i> <span>${row.Phone}</span>
                          </a>` : 
-                         `<div class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 font-medium text-sm">
+                         `<div class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 font-medium text-xs sm:text-sm">
                             No Phone
                           </div>`
                         }
                         
-                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.Name + ' ' + row.Address)}" target="_blank" class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100 font-medium text-sm">
+                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.Name + ' ' + row.Address)}" target="_blank" class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100 font-medium text-xs sm:text-sm">
                            <i data-lucide="map" class="h-4 w-4"></i> Map
                         </a>
                     </div>
@@ -712,10 +710,6 @@
             });
             
             lucide.createIcons();
-            
-            if (document.getElementById('data-container')) {
-                 // document.getElementById('data-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
         }
 
         function exportFiltered() {
