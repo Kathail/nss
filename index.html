@@ -538,13 +538,8 @@
             const stops = allData.filter(row => routeSet.has(row.id)).map(row => encodeURIComponent(row.Address));
             
             // Construct Google Maps URL Logic
-            // Docs: https://developers.google.com/maps/documentation/urls/get-started#directions-action
-            
-            // The destination should be the LAST stop
-            // The waypoints should be everything BEFORE the last stop
-            // Origin is left blank to default to "Current Location"
-            
-            let url = "https://www.google.com/maps/dir/?api=1";
+            // Explicitly set origin=My+Location to ensure directions mode
+            let url = "https://www.google.com/maps/dir/?api=1&origin=My+Location";
             
             if (stops.length === 1) {
                 // Single destination
@@ -552,7 +547,8 @@
             } else {
                 // Multi-stop route
                 const destination = stops[stops.length - 1];
-                const waypoints = stops.slice(0, stops.length - 1).join('|');
+                // Use encoded pipe %7C for safety
+                const waypoints = stops.slice(0, stops.length - 1).join('%7C');
                 url += `&destination=${destination}&waypoints=${waypoints}`;
             }
             
