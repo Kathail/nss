@@ -2,123 +2,58 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NorthScrape Leads Dashboard</title>
     
-    <!-- Tailwind CSS for Styling -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        slate: {
-                            850: '#1e293b',
-                            900: '#0f172a',
-                            950: '#020617',
-                        }
-                    }
-                }
-            }
+            theme: { extend: { colors: { slate: { 850: '#1e293b', 900: '#0f172a', 950: '#020617' } } } }
         }
     </script>
     
-    <!-- PapaParse for reading CSV files -->
+    <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    
-    <!-- jsPDF for PDF Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(229, 231, 235, 0.5);
-        }
-        .dark .glass-panel {
-            background: rgba(30, 41, 59, 0.95);
-            border: 1px solid rgba(71, 85, 105, 0.5);
-        }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(229, 231, 235, 0.5); }
+        .dark .glass-panel { background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(71, 85, 105, 0.5); }
         
-        /* Checkbox custom style */
-        .custom-checkbox {
-            appearance: none;
-            background-color: #fff;
-            margin: 0;
-            font: inherit;
-            color: currentColor;
-            width: 1.25em;
-            height: 1.25em;
-            border: 2px solid #cbd5e1;
-            border-radius: 0.25em;
-            display: grid;
-            place-content: center;
-            cursor: pointer;
-        }
-        .dark .custom-checkbox {
-            background-color: #1e293b;
-            border-color: #475569;
-        }
-        .custom-checkbox::before {
-            content: "";
-            width: 0.65em;
-            height: 0.65em;
-            transform: scale(0);
-            transition: 120ms transform ease-in-out;
-            box-shadow: inset 1em 1em white;
-            transform-origin: center;
-            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
-            background-color: #3b82f6; 
-        }
-        .custom-checkbox:checked {
-            background-color: #3b82f6;
-            border-color: #3b82f6;
-        }
-        .custom-checkbox:checked::before {
-            transform: scale(1);
-            background-color: white;
-        }
-
-        /* Transitions */
-        body, .bg-white, .bg-slate-50, .bg-slate-100, .bg-slate-900, .bg-slate-800, tr {
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-        }
+        /* Custom Checkbox */
+        .custom-checkbox { appearance: none; background-color: #fff; margin: 0; width: 1.25em; height: 1.25em; border: 2px solid #cbd5e1; border-radius: 0.25em; display: grid; place-content: center; cursor: pointer; }
+        .dark .custom-checkbox { background-color: #1e293b; border-color: #475569; }
+        .custom-checkbox::before { content: ""; width: 0.65em; height: 0.65em; transform: scale(0); transition: 120ms; box-shadow: inset 1em 1em white; transform-origin: center; clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%); background-color: #3b82f6; }
+        .custom-checkbox:checked { background-color: #3b82f6; border-color: #3b82f6; }
+        .custom-checkbox:checked::before { transform: scale(1); background-color: white; }
 
         /* Toast Animation */
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: translateY(20px); }
-            10% { opacity: 1; transform: translateY(0); }
-            90% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-20px); }
-        }
-        .toast {
-            animation: fadeInOut 2s ease-in-out forwards;
-        }
+        .toast { animation: fadeInOut 2s ease-in-out forwards; }
+        @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(20px); } 10% { opacity: 1; transform: translateY(0); } 90% { opacity: 1; } 100% { opacity: 0; transform: translateY(-20px); } }
+        
+        /* Transitions */
+        body, .bg-white, .bg-slate-50, .bg-slate-100, tr { transition: background-color 0.2s ease, color 0.2s ease; }
     </style>
 </head>
-<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen font-sans transition-colors duration-300 pb-24 relative">
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen font-sans transition-colors duration-300 pb-32 relative">
 
-    <!-- Toast Notification -->
-    <div id="toast-container" class="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none"></div>
+    <div id="toast-container" class="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[60] pointer-events-none w-max"></div>
 
-    <!-- Top Navigation -->
-    <nav class="bg-blue-900 dark:bg-slate-900 text-white shadow-lg sticky top-0 z-50 transition-colors duration-300">
+    <!-- Nav -->
+    <nav class="bg-blue-900 dark:bg-slate-900 text-white shadow-lg sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center gap-3">
                     <i data-lucide="candycane" class="h-6 w-6 text-pink-400"></i>
-                    <span class="font-bold text-lg sm:text-xl tracking-tight truncate">NorthScrape Dashboard</span>
+                    <span class="font-bold text-lg sm:text-xl tracking-tight truncate">NorthScrape</span>
                 </div>
                 <div class="flex items-center gap-4">
-                    <div class="text-sm text-blue-200 hidden lg:block">
-                        Targeting: Northern Ontario
-                    </div>
-                    <button id="theme-toggle" class="p-2 rounded-lg bg-blue-800 dark:bg-slate-800 hover:bg-blue-700 dark:hover:bg-slate-700 transition-colors">
+                    <div class="hidden md:block text-xs text-blue-200">Press '/' to search</div>
+                    <button id="theme-toggle" class="p-2 rounded-lg bg-blue-800 dark:bg-slate-800 hover:bg-blue-700 transition-colors">
                         <i data-lucide="moon" id="theme-icon" class="h-5 w-5 text-yellow-300"></i>
                     </button>
                 </div>
@@ -126,706 +61,287 @@
         </div>
     </nav>
 
-    <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         
-        <!-- Stats Row -->
-        <div id="stats-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 hidden">
-            <div class="glass-panel p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-blue-500 flex items-center justify-between">
-                <div>
-                    <p class="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">Total Leads</p>
-                    <p class="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white" id="stat-total">0</p>
-                </div>
-                <div class="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400">
-                    <i data-lucide="users" class="h-5 w-5 sm:h-6 sm:w-6"></i>
-                </div>
+        <!-- Stats -->
+        <div id="stats-container" class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mb-6 hidden">
+            <div class="glass-panel p-4 rounded-xl border-l-4 border-blue-500">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Total</p>
+                <p class="text-xl sm:text-2xl font-bold dark:text-white" id="stat-total">0</p>
             </div>
-            
-            <div class="glass-panel p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-green-500 flex items-center justify-between">
-                <div>
-                    <p class="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">With Phone</p>
-                    <p class="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white" id="stat-phones">0</p>
-                </div>
-                <div class="p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-full text-green-600 dark:text-green-400">
-                    <i data-lucide="phone" class="h-5 w-5 sm:h-6 sm:w-6"></i>
-                </div>
+            <div class="glass-panel p-4 rounded-xl border-l-4 border-green-500">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Phones</p>
+                <p class="text-xl sm:text-2xl font-bold dark:text-white" id="stat-phones">0</p>
             </div>
-
-            <div class="glass-panel p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-purple-500 flex items-center justify-between">
-                <div>
-                    <p class="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">Pending</p>
-                    <p class="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white" id="stat-pending">0</p>
-                </div>
-                <div class="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-600 dark:text-purple-400">
-                    <i data-lucide="list-todo" class="h-5 w-5 sm:h-6 sm:w-6"></i>
-                </div>
+            <div class="glass-panel p-4 rounded-xl border-l-4 border-purple-500">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Pending</p>
+                <p class="text-xl sm:text-2xl font-bold dark:text-white" id="stat-pending">0</p>
+            </div>
+            <div class="glass-panel p-4 rounded-xl border-l-4 border-orange-500">
+                <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Route</p>
+                <p class="text-xl sm:text-2xl font-bold dark:text-white" id="stat-route">0</p>
             </div>
         </div>
 
-        <!-- Drop Zone (Visible initially) -->
-        <div id="drop-zone" class="border-4 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 sm:p-12 text-center hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors cursor-pointer mb-8">
-            <i data-lucide="upload-cloud" class="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-slate-400 mb-4"></i>
-            <h3 class="text-lg sm:text-xl font-semibold text-slate-700 dark:text-slate-200">Load your Leads</h3>
-            <p class="text-slate-500 dark:text-slate-400 mt-2 text-sm sm:text-base">Drag and drop your exported <strong>.csv</strong> file here</p>
-            <p class="text-xs sm:text-sm text-slate-400 dark:text-slate-500 mt-4">(Or host <code>leads.csv</code> with this page)</p>
+        <!-- Load State -->
+        <div id="drop-zone" class="border-4 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 text-center hover:border-blue-500 transition-colors cursor-pointer mb-8">
+            <i data-lucide="upload-cloud" class="h-12 w-12 mx-auto text-slate-400 mb-4"></i>
+            <h3 class="text-lg font-semibold dark:text-slate-200">Load Leads</h3>
+            <p class="text-slate-500 mt-2 text-sm">Drag & Drop CSV</p>
             <input type="file" id="file-input" class="hidden" accept=".csv">
-            <button onclick="document.getElementById('file-input').click()" class="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm sm:text-base">Select File</button>
+            <button onclick="document.getElementById('file-input').click()" class="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg">Select File</button>
         </div>
 
-        <!-- Controls & Data (Hidden initially) -->
+        <!-- Main Interface -->
         <div id="data-container" class="hidden animate-fade-in">
             
-            <!-- Controls Bar -->
+            <!-- Controls -->
             <div class="flex flex-col lg:flex-row gap-4 mb-6">
-                <!-- Search -->
                 <div class="relative flex-grow">
                     <i data-lucide="search" class="absolute left-3 top-3 h-5 w-5 text-slate-400"></i>
-                    <input type="text" id="search-input" placeholder="Search..." 
-                           class="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base">
+                    <input type="text" id="search-input" placeholder="Search... (Press '/')" 
+                           class="w-full pl-10 pr-4 py-2 rounded-lg border dark:border-slate-700 dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
                 </div>
                 
-                <!-- Filters -->
                 <div class="flex flex-wrap gap-2 items-center justify-between sm:justify-start">
-                    <label class="flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition flex-1 sm:flex-none justify-center">
-                        <input type="checkbox" id="filter-phones" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
-                        <span class="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">Has Phone</span>
+                    <label class="flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-800 px-3 py-2 rounded-lg border dark:border-slate-700 select-none">
+                        <input type="checkbox" id="filter-phones" class="w-4 h-4 text-blue-600 rounded">
+                        <span class="text-xs font-medium dark:text-slate-200">Phones Only</span>
                     </label>
 
-                    <label class="flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition flex-1 sm:flex-none justify-center">
-                        <input type="checkbox" id="filter-uncontacted" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
-                        <span class="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">Pending</span>
+                    <label class="flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-800 px-3 py-2 rounded-lg border dark:border-slate-700 select-none">
+                        <input type="checkbox" id="filter-uncontacted" class="w-4 h-4 text-blue-600 rounded">
+                        <span class="text-xs font-medium dark:text-slate-200">Pending</span>
                     </label>
 
                     <div class="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                        <!-- Import Button -->
-                        <button onclick="document.getElementById('file-input').click()" class="flex-1 sm:flex-none px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium flex items-center justify-center gap-2">
-                            <i data-lucide="upload" class="h-4 w-4"></i> Import
-                        </button>
-
-                        <button onclick="clearFilters()" class="flex-1 sm:flex-none px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-medium">Reset</button>
-                        
-                        <!-- PDF Export Button -->
-                        <button onclick="exportPDF()" class="flex-1 sm:flex-none px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium flex items-center justify-center gap-2">
-                            <i data-lucide="file-text" class="h-4 w-4"></i> PDF
-                        </button>
-
-                        <!-- CSV Export Button -->
-                        <button onclick="exportFiltered()" class="flex-1 sm:flex-none px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium flex items-center justify-center gap-2">
-                            <i data-lucide="download" class="h-4 w-4"></i> CSV
-                        </button>
+                        <button onclick="copyAllPhones()" class="flex-1 px-3 py-2 bg-slate-200 dark:bg-slate-700 dark:text-white rounded-lg text-sm hover:bg-slate-300 transition" title="Copy All Visible Numbers"><i data-lucide="copy" class="h-4 w-4"></i></button>
+                        <button onclick="document.getElementById('file-input').click()" class="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition" title="Import"><i data-lucide="upload" class="h-4 w-4"></i></button>
+                        <button onclick="clearFilters()" class="flex-1 px-3 py-2 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 text-sm hover:bg-slate-50 transition">Reset</button>
+                        <button onclick="exportPDF()" class="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition" title="PDF"><i data-lucide="file-text" class="h-4 w-4"></i></button>
                     </div>
                 </div>
             </div>
 
-            <!-- DESKTOP VIEW: Table (Hidden on Mobile) -->
-            <div class="hidden md:block bg-white dark:bg-slate-800 rounded-xl shadow-lg overflow-hidden border border-slate-200 dark:border-slate-700 transition-colors">
+            <!-- Desktop Table -->
+            <div class="hidden md:block bg-white dark:bg-slate-800 rounded-xl shadow overflow-hidden border dark:border-slate-700">
                 <div class="overflow-x-auto max-h-[70vh]">
                     <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700 relative">
                         <thead class="bg-slate-50 dark:bg-slate-900 sticky top-0 z-10 shadow-sm">
                             <tr>
-                                <th scope="col" onclick="sortBy('status')" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none group" title="Contact Status">
-                                    <div class="flex items-center gap-1">
-                                        <i data-lucide="check-square" class="h-4 w-4"></i>
-                                        <i data-lucide="arrow-up-down" class="h-3 w-3 text-slate-300 group-hover:text-slate-500 sort-icon" id="sort-icon-status"></i>
-                                    </div>
-                                </th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16" title="Add to Route">
-                                    <i data-lucide="map-pin" class="h-4 w-4"></i>
-                                </th>
-                                <th scope="col" onclick="sortBy('Name')" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none group">
-                                    <div class="flex items-center gap-1">
-                                        Business Name
-                                        <i data-lucide="arrow-up-down" class="h-3 w-3 text-slate-300 group-hover:text-slate-500 sort-icon" id="sort-icon-Name"></i>
-                                    </div>
-                                </th>
-                                <th scope="col" onclick="sortBy('Address')" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none group">
-                                    <div class="flex items-center gap-1">
-                                        Location
-                                        <i data-lucide="arrow-up-down" class="h-3 w-3 text-slate-300 group-hover:text-slate-500 sort-icon" id="sort-icon-Address"></i>
-                                    </div>
-                                </th>
-                                <th scope="col" onclick="sortBy('Phone')" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none group">
-                                    <div class="flex items-center gap-1">
-                                        Phone
-                                        <i data-lucide="arrow-up-down" class="h-3 w-3 text-slate-300 group-hover:text-slate-500 sort-icon" id="sort-icon-Phone"></i>
-                                    </div>
-                                </th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Action</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-16 cursor-pointer" onclick="sortBy('status')">Stat</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase w-16">Route</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase cursor-pointer" onclick="sortBy('Name')">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase cursor-pointer" onclick="sortBy('Address')">Location</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase cursor-pointer" onclick="sortBy('Phone')">Phone</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Map</th>
                             </tr>
                         </thead>
-                        <tbody id="table-body" class="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-                            <!-- Rows inserted via JS -->
-                        </tbody>
+                        <tbody id="table-body" class="divide-y divide-slate-200 dark:divide-slate-700"></tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- MOBILE VIEW: Cards (Visible only on Mobile) -->
-            <div id="mobile-cards" class="md:hidden space-y-4">
-                <!-- Cards inserted via JS -->
+            <!-- Mobile Cards -->
+            <div id="mobile-cards" class="md:hidden space-y-4"></div>
+            
+            <div id="no-results" class="hidden p-12 text-center text-slate-500 dark:text-slate-400">
+                <i data-lucide="search-x" class="h-12 w-12 mx-auto mb-4 opacity-50"></i>
+                <p>No matching leads found.</p>
+                <button onclick="clearFilters()" class="mt-4 text-blue-500 hover:underline">Clear Filters</button>
             </div>
             
-            <div id="no-results" class="hidden p-8 text-center text-slate-500 dark:text-slate-400">
-                No matching clients found.
-            </div>
-            
-            <!-- Pagination Footer -->
-            <div class="mt-4 md:mt-0 bg-slate-50 dark:bg-slate-900 md:rounded-b-xl px-4 md:px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl md:rounded-t-none shadow-sm md:shadow-none border md:border-t">
-                <span id="showing-count" class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center sm:text-left">Showing 0 results</span>
-                
-                <div class="flex items-center gap-4">
-                    <span class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                        Page <span id="current-page-display" class="font-bold text-slate-700 dark:text-slate-200">1</span> of <span id="total-pages-display" class="font-bold text-slate-700 dark:text-slate-200">1</span>
-                    </span>
-                    <div class="flex gap-2">
-                        <button id="btn-prev" onclick="changePage(-1)" disabled class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Prev</button>
-                        <button id="btn-next" onclick="changePage(1)" disabled class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Next</button>
-                    </div>
+            <!-- Pagination -->
+            <div class="mt-4 bg-slate-50 dark:bg-slate-900 px-4 py-4 border-t dark:border-slate-700 flex justify-between items-center rounded-xl shadow-sm">
+                <span id="showing-count" class="text-xs text-slate-500 dark:text-slate-400">0 results</span>
+                <div class="flex gap-2">
+                    <button id="btn-prev" onclick="changePage(-1)" class="px-4 py-2 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded text-sm disabled:opacity-50">Prev</button>
+                    <button id="btn-next" onclick="changePage(1)" class="px-4 py-2 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded text-sm disabled:opacity-50">Next</button>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Floating Route Button -->
-    <div id="route-fab" class="fixed bottom-6 right-6 transition-transform duration-300 transform translate-y-24 z-50">
-        <button onclick="launchRoute()" class="group flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full shadow-xl hover:shadow-2xl transition-all">
-            <i data-lucide="navigation" class="h-5 w-5"></i>
-            <span class="font-bold">Navigate (<span id="route-count">0</span>)</span>
+    <!-- FAB -->
+    <div id="route-fab" class="fixed bottom-6 right-6 transition-transform duration-300 transform translate-y-32 z-50">
+        <button onclick="launchRoute()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-full shadow-2xl hover:scale-105 transition-transform">
+            <i data-lucide="navigation" class="h-6 w-6"></i> 
+            <span class="font-bold text-lg">Go (<span id="route-count">0</span>)</span>
         </button>
-        <div id="route-warning" class="absolute -top-10 right-0 bg-red-100 border border-red-200 text-red-700 text-xs px-3 py-1 rounded shadow-lg hidden whitespace-nowrap">
-            Route limits may apply (>10 stops)
-        </div>
+        <div id="route-warning" class="absolute -top-8 right-0 bg-red-100 text-red-700 text-xs px-2 py-1 rounded shadow hidden font-bold">10+ stops</div>
     </div>
 
     <script>
-        // --- State ---
-        let allData = [];
-        let filteredData = [];
-        let currentPage = 1;
-        const rowsPerPage = 50;
-        let debounceTimer; // For Search Debounce
-        
-        // Sort State
-        let currentSort = { column: null, direction: 'asc' };
-        
-        // Route State
+        // State
+        let allData = [], filteredData = [], currentPage = 1, currentSort = { col: null, dir: 'asc' };
         let routeSet = new Set();
-        
-        // --- Dark Mode Logic ---
-        const themeToggleBtn = document.getElementById('theme-toggle');
-        const themeIcon = document.getElementById('theme-icon');
-        
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-            themeIcon.setAttribute('data-lucide', 'sun');
-        } else {
-            document.documentElement.classList.remove('dark');
-            themeIcon.setAttribute('data-lucide', 'moon');
-        }
+        const rowsPerPage = 50;
+        let debounceTimer;
 
-        themeToggleBtn.addEventListener('click', () => {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                localStorage.theme = 'light';
-                themeIcon.setAttribute('data-lucide', 'moon');
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.theme = 'dark';
-                themeIcon.setAttribute('data-lucide', 'sun');
-            }
-            lucide.createIcons();
-        });
-
-        // --- Init ---
+        // Init
         lucide.createIcons();
+        if(localStorage.theme==='dark'||(!localStorage.theme&&window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
         
-        fetch('leads.csv').then(response => {
-            if (response.ok) {
-                response.text().then(csvText => {
-                    parseCSV(csvText);
-                });
-            }
-        }).catch(() => console.log("No auto-load file found"));
+        // Auto-load
+        fetch('leads.csv').then(r=>r.ok?r.text().then(parseCSV):null);
 
-        // --- Event Listeners ---
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-input');
+        // Listeners
+        document.getElementById('theme-toggle').onclick=()=>{ document.documentElement.classList.toggle('dark'); localStorage.theme=document.documentElement.classList.contains('dark')?'dark':'light'; };
+        document.getElementById('file-input').onchange=(e)=>handleFile(e.target.files[0]);
+        document.getElementById('file-input').onclick=(e)=>e.target.value=null;
+        
         const searchInput = document.getElementById('search-input');
-        const filterPhones = document.getElementById('filter-phones');
-        const filterUncontacted = document.getElementById('filter-uncontacted');
-
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('border-blue-500', 'bg-blue-50', 'dark:bg-slate-800');
-        });
-
-        dropZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-slate-800');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-slate-800');
-            const file = e.dataTransfer.files[0];
-            if (file) handleFile(file);
-        });
-
-        fileInput.addEventListener('click', (e) => {
-            e.target.value = null;
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) handleFile(file);
-        });
-
-        // Debounced Search Input
-        searchInput.addEventListener('input', () => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(runFilters, 300);
-        });
+        searchInput.oninput=()=>{ clearTimeout(debounceTimer); debounceTimer=setTimeout(runFilters,300); };
         
-        filterPhones.addEventListener('change', runFilters);
-        filterUncontacted.addEventListener('change', runFilters);
+        document.getElementById('filter-phones').onchange=runFilters;
+        document.getElementById('filter-uncontacted').onchange=runFilters;
 
-        // --- Logic ---
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '/' && document.activeElement !== searchInput) {
+                e.preventDefault();
+                searchInput.focus();
+            }
+            if (e.key === 'Escape') {
+                searchInput.blur();
+                clearFilters();
+            }
+        });
 
-        function showToast(message) {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = "toast bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg mb-2 text-sm font-medium";
-            toast.innerText = message;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.remove();
-            }, 2000);
-        }
-
-        function copyToClipboard(text) {
-            if (!text || text === 'N/A') return;
-            navigator.clipboard.writeText(text).then(() => {
-                showToast("Address Copied!");
-            }).catch(err => {
-                // Fallback
-                const textArea = document.createElement("textarea");
-                textArea.value = text;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand("copy");
-                document.body.removeChild(textArea);
-                showToast("Address Copied!");
-            });
-        }
-
-        function handleFile(file) {
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    const headers = results.meta.fields;
-                    if (!headers.includes("Name") && !headers.includes("Address")) {
-                        alert("Invalid CSV format. Please use the export from NorthScrape.");
-                        return;
-                    }
-                    allData = results.data.map((row) => ({
-                        ...row,
-                        id: btoa(unescape(encodeURIComponent((row.Name || '') + (row.Address || '')))).substring(0, 16)
-                    }));
-                    
-                    searchInput.value = '';
-                    filterPhones.checked = false;
-                    filterUncontacted.checked = false;
-                    currentSort = { column: null, direction: 'asc' };
-                    updateSortIcons();
-                    routeSet.clear();
-                    updateRouteUI();
-                    
-                    initDashboard();
-                }
-            });
-        }
-
-        function parseCSV(csvText) {
-            const results = Papa.parse(csvText, {
-                header: true,
-                skipEmptyLines: true
-            });
-            allData = results.data.map((row) => ({
-                ...row,
-                id: btoa(unescape(encodeURIComponent((row.Name || '') + (row.Address || '')))).substring(0, 16)
-            }));
+        // Core Functions
+        function handleFile(f){ Papa.parse(f,{header:true,skipEmptyLines:true,complete:r=>{ if(!r.meta.fields.includes("Name"))return alert("Invalid CSV"); allData=r.data.map(mapRow); resetUI(); }}); }
+        function parseCSV(txt){ const r=Papa.parse(txt,{header:true,skipEmptyLines:true}); allData=r.data.map(mapRow); resetUI(); }
+        function mapRow(r){ return {...r, id:btoa(unescape(encodeURIComponent((r.Name||'')+(r.Address||'')))).substring(0,16)}; }
+        
+        function resetUI() {
+            routeSet.clear();
+            updateRouteUI();
+            searchInput.value = '';
+            document.getElementById('filter-phones').checked = false;
+            document.getElementById('filter-uncontacted').checked = false;
             initDashboard();
         }
 
-        function initDashboard() {
+        function initDashboard(){
             document.getElementById('drop-zone').classList.add('hidden');
             document.getElementById('stats-container').classList.remove('hidden');
             document.getElementById('stats-container').classList.add('grid');
             document.getElementById('data-container').classList.remove('hidden');
-            
-            updateStats();
             runFilters();
         }
 
-        function updateStats() {
-            const total = allData.length;
-            const withPhones = allData.filter(d => d.Phone && d.Phone !== 'N/A' && d.Phone !== '').length;
-            const contacted = getContactedList();
-            const pending = total - allData.filter(d => contacted.includes(d.id)).length;
+        function runFilters(){
+            const q=searchInput.value.toLowerCase();
+            const ph=document.getElementById('filter-phones').checked;
+            const pend=document.getElementById('filter-uncontacted').checked;
+            const cont=getContacted();
 
-            document.getElementById('stat-total').innerText = total;
-            document.getElementById('stat-phones').innerText = withPhones;
-            document.getElementById('stat-pending').innerText = pending;
-        }
-        
-        function getContactedList() {
-            const stored = localStorage.getItem('contacted_leads');
-            return stored ? JSON.parse(stored) : [];
-        }
-
-        function toggleContacted(id) {
-            let contacted = getContactedList();
-            if (contacted.includes(id)) {
-                contacted = contacted.filter(i => i !== id);
-            } else {
-                contacted.push(id);
-            }
-            localStorage.setItem('contacted_leads', JSON.stringify(contacted));
-            updateStats();
-            if (filterUncontacted.checked) {
-                runFilters();
-            } else {
-                renderTable();
-            }
-        }
-
-        // --- Route Logic ---
-        function toggleRoute(id) {
-            if (routeSet.has(id)) {
-                routeSet.delete(id);
-            } else {
-                routeSet.add(id);
-            }
-            updateRouteUI();
-            renderTable(); // Re-render to update icon states
-        }
-
-        function updateRouteUI() {
-            const fab = document.getElementById('route-fab');
-            const countSpan = document.getElementById('route-count');
-            const warning = document.getElementById('route-warning');
-            
-            countSpan.innerText = routeSet.size;
-            
-            if (routeSet.size > 0) {
-                fab.classList.remove('translate-y-24'); // Slide up
-            } else {
-                fab.classList.add('translate-y-24'); // Slide down
-            }
-
-            if (routeSet.size > 10) {
-                warning.classList.remove('hidden');
-            } else {
-                warning.classList.add('hidden');
-            }
-        }
-
-        function launchRoute() {
-            if (routeSet.size === 0) return;
-            
-            // Collect addresses from selected IDs
-            const stops = allData.filter(row => routeSet.has(row.id)).map(row => encodeURIComponent(row.Address));
-            
-            // Construct Google Maps URL Logic
-            // Explicitly set origin=My+Location to ensure directions mode
-            let url = "https://www.google.com/maps/dir/?api=1&origin=My+Location";
-            
-            if (stops.length === 1) {
-                // Single destination
-                url += `&destination=${stops[0]}`;
-            } else {
-                // Multi-stop route
-                const destination = stops[stops.length - 1];
-                // Use encoded pipe %7C for safety
-                const waypoints = stops.slice(0, stops.length - 1).join('%7C');
-                url += `&destination=${destination}&waypoints=${waypoints}`;
-            }
-            
-            window.open(url, '_blank');
-        }
-
-        // --- Sort Logic ---
-        function sortBy(column) {
-            if (currentSort.column === column) {
-                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSort.column = column;
-                currentSort.direction = 'asc';
-            }
-            
-            updateSortIcons();
-            runFilters();
-        }
-
-        function updateSortIcons() {
-            document.querySelectorAll('.sort-icon').forEach(icon => {
-                icon.setAttribute('data-lucide', 'arrow-up-down');
-                icon.classList.remove('text-blue-500');
-                icon.classList.add('text-slate-300');
+            filteredData=allData.filter(r=>{
+                const txt=(r.Name+r.Address+r.Phone).toLowerCase();
+                const hasP=r.Phone&&r.Phone!=='N/A';
+                const isC=cont.includes(r.id);
+                return txt.includes(q) && (!ph||hasP) && (!pend||!isC);
             });
-            
-            if (currentSort.column) {
-                const iconId = `sort-icon-${currentSort.column}`;
-                const activeIcon = document.getElementById(iconId);
-                if (activeIcon) {
-                    activeIcon.setAttribute('data-lucide', currentSort.direction === 'asc' ? 'arrow-up' : 'arrow-down');
-                    activeIcon.classList.remove('text-slate-300');
-                    activeIcon.classList.add('text-blue-500');
-                }
-            }
-            lucide.createIcons();
-        }
 
-        function runFilters() {
-            const query = searchInput.value.toLowerCase();
-            const phonesOnly = filterPhones.checked;
-            const uncontactedOnly = filterUncontacted.checked;
-            const contactedList = getContactedList();
-
-            filteredData = allData.filter(row => {
-                const name = (row.Name || '').toLowerCase();
-                const address = (row.Address || '').toLowerCase();
-                const phone = (row.Phone || '').toLowerCase();
-                const matchesText = name.includes(query) || address.includes(query) || phone.includes(query);
-                const hasPhone = row.Phone && row.Phone !== 'N/A' && row.Phone !== '';
-                const matchesPhone = !phonesOnly || hasPhone;
-                const isContacted = contactedList.includes(row.id);
-                const matchesContacted = !uncontactedOnly || !isContacted;
-                return matchesText && matchesPhone && matchesContacted;
+            if(currentSort.col) filteredData.sort((a,b)=>{
+                let va=a[currentSort.col]||'', vb=b[currentSort.col]||'';
+                if(currentSort.col==='status'){ va=cont.includes(a.id); vb=cont.includes(b.id); }
+                return (va<vb?-1:1)*(currentSort.dir==='asc'?1:-1);
             });
-            
-            if (currentSort.column) {
-                filteredData.sort((a, b) => {
-                    let valA, valB;
-                    if (currentSort.column === 'status') {
-                         valA = contactedList.includes(a.id) ? 1 : 0;
-                         valB = contactedList.includes(b.id) ? 1 : 0;
-                    } 
-                    else if (currentSort.column === 'Phone') {
-                         const hasA = (a.Phone && a.Phone !== 'N/A') ? 1 : 0;
-                         const hasB = (b.Phone && b.Phone !== 'N/A') ? 1 : 0;
-                         if (hasA !== hasB) return hasB - hasA;
-                         valA = (a.Phone || '').toLowerCase();
-                         valB = (b.Phone || '').toLowerCase();
-                    }
-                    else {
-                        valA = (a[currentSort.column] || '').toLowerCase();
-                        valB = (b[currentSort.column] || '').toLowerCase();
-                    }
-                    if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
-                    if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
-                    return 0;
-                });
-            }
 
-            currentPage = 1;
-            renderTable();
-        }
-        
-        function clearFilters() {
-            searchInput.value = '';
-            filterPhones.checked = false;
-            filterUncontacted.checked = false;
-            currentSort = { column: null, direction: 'asc' };
-            updateSortIcons();
-            runFilters();
+            currentPage=1; renderTable(); updateStats();
         }
 
-        function changePage(direction) {
-            const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-            const newPage = currentPage + direction;
-            if (newPage > 0 && newPage <= totalPages) {
-                currentPage = newPage;
-                renderTable();
-            }
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById('table-body');
-            const mobileContainer = document.getElementById('mobile-cards');
+        function renderTable(){
+            const tbody=document.getElementById('table-body');
+            const mobile=document.getElementById('mobile-cards');
+            tbody.innerHTML=''; mobile.innerHTML='';
             
-            // Use DocumentFragment for batched DOM insertion
-            const fragmentDesktop = document.createDocumentFragment();
-            const fragmentMobile = document.createDocumentFragment();
+            const start=(currentPage-1)*rowsPerPage;
+            const pageData=filteredData.slice(start,start+rowsPerPage);
+            const cont=getContacted();
+
+            document.getElementById('no-results').classList.toggle('hidden', filteredData.length>0);
+            document.getElementById('showing-count').innerText=`${filteredData.length?start+1:0}-${Math.min(start+rowsPerPage,filteredData.length)} of ${filteredData.length}`;
             
-            tbody.innerHTML = '';
-            mobileContainer.innerHTML = '';
-            
-            const contactedList = getContactedList();
-            const totalRows = filteredData.length;
-            const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
+            const fd=document.createDocumentFragment(), fm=document.createDocumentFragment();
 
-            if (totalRows === 0) {
-                document.getElementById('no-results').classList.remove('hidden');
-                document.getElementById('showing-count').innerText = "Showing 0 results";
-            } else {
-                document.getElementById('no-results').classList.add('hidden');
-            }
-
-            const startIndex = (currentPage - 1) * rowsPerPage;
-            const endIndex = Math.min(startIndex + rowsPerPage, totalRows);
-            const pageData = filteredData.slice(startIndex, endIndex);
-
-            if (totalRows > 0) {
-                document.getElementById('showing-count').innerText = `Showing ${startIndex + 1} to ${endIndex} of ${totalRows} results`;
-            } else {
-                document.getElementById('showing-count').innerText = `Showing 0 results`;
-            }
-            
-            document.getElementById('current-page-display').innerText = currentPage;
-            document.getElementById('total-pages-display').innerText = totalPages;
-
-            document.getElementById('btn-prev').disabled = currentPage === 1;
-            document.getElementById('btn-next').disabled = currentPage === totalPages || totalRows === 0;
-
-            pageData.forEach(row => {
-                const isContacted = contactedList.includes(row.id);
-                const hasPhone = row.Phone && row.Phone !== 'N/A' && row.Phone !== '';
-                const inRoute = routeSet.has(row.id);
+            pageData.forEach(r=>{
+                const isC=cont.includes(r.id), hasP=r.Phone&&r.Phone!=='N/A', inR=routeSet.has(r.id);
                 
-                // --- Desktop Table Row ---
-                const tr = document.createElement('tr');
-                if (isContacted) {
-                    tr.classList.add('opacity-50', 'bg-slate-50', 'dark:bg-slate-800/50');
-                }
-                tr.className += " border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors";
+                // Desktop
+                const tr=document.createElement('tr');
+                tr.className=`hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors ${isC?'opacity-50 bg-slate-50 dark:bg-slate-900':''}`;
+                tr.innerHTML=`
+                    <td class="px-6 py-4"><input type="checkbox" class="custom-checkbox" ${isC?'checked':''} onclick="toggleC('${r.id}')"></td>
+                    <td class="px-6 py-4"><button onclick="toggleR('${r.id}')" class="p-2 rounded-full transition ${inR?'text-blue-600 bg-blue-100 dark:bg-blue-900 dark:text-blue-300':'text-slate-300 hover:text-slate-500'}"><i data-lucide="map-pin" class="w-5 h-5 ${inR?'fill-current':''}"></i></button></td>
+                    <td class="px-6 py-4 dark:text-white ${isC?'line-through':''}">${r.Name}</td>
+                    <td class="px-6 py-4 text-slate-600 dark:text-slate-400 cursor-pointer hover:text-blue-500" onclick="copy('${r.Address}')">${r.Address}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${hasP?`<a href="tel:${r.Phone}" class="text-green-600 font-mono font-bold hover:underline whitespace-nowrap px-2 py-1 rounded bg-green-50 dark:bg-green-900/30">${r.Phone}</a>`:'<span class="text-slate-400 text-sm">N/A</span>'}</td>
+                    <td class="px-6 py-4"><a href="https://maps.google.com/?q=${encodeURIComponent(r.Name+' '+r.Address)}" target="_blank" class="text-blue-500 hover:underline">Map</a></td>
+                `;
+                fd.appendChild(tr);
 
-                const checkboxCell = `<td class="px-6 py-4">
-                    <input type="checkbox" class="custom-checkbox" 
-                           ${isContacted ? 'checked' : ''} 
-                           onclick="toggleContacted('${row.id}')">
-                </td>`;
-                
-                const routeCell = `<td class="px-6 py-4">
-                    <button onclick="toggleRoute('${row.id}')" class="p-2 rounded-full transition-colors ${inRoute ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}">
-                        <i data-lucide="map-pin" class="h-5 w-5 ${inRoute ? 'fill-current' : ''}"></i>
-                    </button>
-                </td>`;
-                
-                const nameCell = `<td class="px-6 py-4">
-                    <div class="text-sm font-bold text-slate-900 dark:text-white ${isContacted ? 'line-through decoration-slate-400' : ''}">${row.Name || 'Unknown'}</div>
-                    ${row.Website && row.Website !== 'N/A' ? 
-                        `<a href="${row.Website}" target="_blank" class="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-1">
-                           Visit Website <i data-lucide="external-link" class="h-3 w-3"></i>
-                        </a>` : ''}
-                </td>`;
-
-                const addressCell = `<td class="px-6 py-4 cursor-pointer group" onclick="copyToClipboard('${row.Address}')" title="Click to Copy">
-                    <div class="text-sm text-slate-600 dark:text-slate-400 max-w-xs group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-1">
-                        ${row.Address || 'N/A'}
-                    </div>
-                </td>`;
-
-                const phoneCell = `<td class="px-6 py-4">
-                    ${hasPhone ? 
-                        `<a href="tel:${row.Phone}" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800 transition-colors whitespace-nowrap">
-                           <i data-lucide="phone" class="h-3 w-3 mr-1"></i> ${row.Phone}
-                         </a>` 
-                        : '<span class="text-slate-400 dark:text-slate-600 text-sm italic">N/A</span>'}
-                </td>`;
-
-                const actionCell = `<td class="px-6 py-4 text-right text-sm font-medium">
-                    <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.Name + ' ' + row.Address)}" target="_blank" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1">
-                        Map <i data-lucide="map" class="h-4 w-4"></i>
-                    </a>
-                </td>`;
-
-                tr.innerHTML = checkboxCell + routeCell + nameCell + addressCell + phoneCell + actionCell;
-                fragmentDesktop.appendChild(tr);
-
-                // --- Mobile Card ---
-                const card = document.createElement('div');
-                card.className = `bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-4 ${isContacted ? 'opacity-60 bg-slate-50 dark:bg-slate-900' : ''} cursor-pointer transition-colors active:bg-slate-50 dark:active:bg-slate-700 select-none`;
-                card.onclick = () => toggleContacted(row.id);
-                
-                card.innerHTML = `
+                // Mobile (Whole Card Clickable)
+                const c=document.createElement('div');
+                c.className=`bg-white dark:bg-slate-800 rounded-lg shadow p-4 cursor-pointer select-none transition active:scale-[0.98] ${isC?'opacity-60 bg-slate-50 dark:bg-slate-900':''}`;
+                c.onclick=()=>toggleC(r.id);
+                c.innerHTML=`
                     <div class="flex justify-between items-start mb-2">
                         <div class="flex-1 pr-2">
-                            <h3 class="font-bold text-slate-900 dark:text-white ${isContacted ? 'line-through decoration-slate-400' : ''}">${row.Name || 'Unknown'}</h3>
-                            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">${row.Address || 'N/A'}</p>
+                            <h3 class="font-bold text-lg dark:text-white ${isC?'line-through':''}">${r.Name}</h3>
+                            <p class="text-sm text-slate-500">${r.Address}</p>
                         </div>
-                        <button onclick="event.stopPropagation(); toggleRoute('${row.id}')" class="p-2 -mr-2 rounded-full ${inRoute ? 'text-blue-600 dark:text-blue-300' : 'text-slate-300'}">
-                            <i data-lucide="map-pin" class="h-6 w-6 ${inRoute ? 'fill-current' : ''}"></i>
-                        </button>
+                        <button onclick="event.stopPropagation(); toggleR('${r.id}')" class="p-2 -mr-2 rounded-full ${inR?'text-blue-600 dark:text-blue-300':'text-slate-300'}"><i data-lucide="map-pin" class="w-7 h-7 ${inR?'fill-current':''}"></i></button>
                     </div>
-                    
                     <div class="grid grid-cols-2 gap-3 mt-4">
-                        ${hasPhone ? 
-                        `<a href="tel:${row.Phone}" onclick="event.stopPropagation()" class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100 font-medium text-sm">
-                           <i data-lucide="phone" class="h-4 w-4"></i> ${row.Phone}
-                         </a>` : 
-                         `<div class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 font-medium text-sm">
-                            No Phone
-                          </div>`
-                        }
-                        
-                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.Name + ' ' + row.Address)}" target="_blank" onclick="event.stopPropagation()" class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100 font-medium text-sm">
-                           <i data-lucide="map" class="h-4 w-4"></i> Map
-                        </a>
+                        ${hasP ? `<a href="tel:${r.Phone}" onclick="event.stopPropagation()" class="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100 py-3 rounded-lg text-center font-bold flex items-center justify-center gap-2 text-sm"><i data-lucide="phone" class="w-4 h-4"></i> ${r.Phone}</a>` : '<div class="bg-slate-100 text-slate-400 py-3 rounded-lg text-center text-sm">No Phone</div>'}
+                        <a href="https://maps.google.com/?q=${encodeURIComponent(r.Name+' '+r.Address)}" target="_blank" onclick="event.stopPropagation()" class="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100 py-3 rounded-lg text-center font-bold flex items-center justify-center gap-2 text-sm"><i data-lucide="map" class="w-4 h-4"></i> Map</a>
                     </div>
                 `;
-                fragmentMobile.appendChild(card);
+                fm.appendChild(c);
             });
+            tbody.appendChild(fd); mobile.appendChild(fm); lucide.createIcons();
             
-            tbody.appendChild(fragmentDesktop);
-            mobileContainer.appendChild(fragmentMobile);
-            
-            lucide.createIcons();
+            const max=Math.ceil(filteredData.length/rowsPerPage)||1;
+            document.getElementById('btn-prev').disabled=currentPage===1;
+            document.getElementById('btn-next').disabled=currentPage===max;
         }
 
-        async function exportPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            doc.setFontSize(18);
-            doc.text("NorthScrape Leads Export", 14, 22);
-            
-            doc.setFontSize(11);
-            doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 30);
-            doc.text(`Total Records: ${filteredData.length}`, 14, 36);
-
-            const tableData = filteredData.map(row => [
-                row.Name || 'Unknown',
-                row.Address || 'N/A',
-                row.Phone || 'N/A',
-                getContactedList().includes(row.id) ? 'Contacted' : 'Pending'
-            ]);
-
-            doc.autoTable({
-                startY: 44,
-                head: [['Business Name', 'Location', 'Phone', 'Status']],
-                body: tableData,
-                theme: 'striped',
-                headStyles: { fillColor: [30, 58, 138] },
-            });
-
-            doc.save("leads_export.pdf");
+        // Action Logic
+        function launchRoute(){
+            const stops=allData.filter(r=>routeSet.has(r.id)).map(r=>encodeURIComponent(r.Address));
+            if(!stops.length)return;
+            // ROBUST MOBILE URL: api=1, origin=My+Location, pipe encoded
+            let url="https://www.google.com/maps/dir/?api=1&origin=My+Location"; 
+            if(stops.length===1) url+=`&destination=${stops[0]}`;
+            else { const d=stops.pop(); url+=`&destination=${d}&waypoints=${stops.join('%7C')}`; }
+            window.open(url,'_blank');
         }
 
-        function exportFiltered() {
-            const csv = Papa.unparse(filteredData);
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", "filtered_leads.csv");
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        function copyAllPhones() {
+            const phones = filteredData.map(r => r.Phone).filter(p => p && p !== 'N/A').join('\n');
+            if(phones) { navigator.clipboard.writeText(phones); showToast(`${filteredData.length} Numbers Copied!`); }
+            else showToast("No numbers to copy");
         }
 
+        // Helpers
+        function getContacted(){ return JSON.parse(localStorage.getItem('contacted_leads')||'[]'); }
+        function toggleC(id){ const c=getContacted(), i=c.indexOf(id); i>-1?c.splice(i,1):c.push(id); localStorage.setItem('contacted_leads',JSON.stringify(c)); updateStats(); renderTable(); }
+        function toggleR(id){ routeSet.has(id)?routeSet.delete(id):routeSet.add(id); updateRouteUI(); renderTable(); }
+        function updateRouteUI(){ 
+            const s=routeSet.size; document.getElementById('route-count').innerText=s; 
+            const fab=document.getElementById('route-fab'); s>0?fab.classList.remove('translate-y-32'):fab.classList.add('translate-y-32');
+            document.getElementById('route-warning').classList.toggle('hidden', s<=10);
+            document.getElementById('stat-route').innerText=s;
+        }
+        function updateStats(){ const t=allData.length, p=allData.filter(r=>r.Phone&&r.Phone!=='N/A').length, c=getContacted(), pen=t-allData.filter(r=>c.includes(r.id)).length; document.getElementById('stat-total').innerText=t; document.getElementById('stat-phones').innerText=p; document.getElementById('stat-pending').innerText=pen; }
+        function copy(t){ navigator.clipboard.writeText(t); showToast("Address Copied"); }
+        function showToast(m){ const d=document.createElement('div'); d.className="toast bg-slate-800 text-white px-4 py-2 rounded-lg shadow-lg mb-2 font-medium text-sm"; d.innerText=m; document.getElementById('toast-container').appendChild(d); setTimeout(()=>d.remove(),2000); }
+        function changePage(d){ currentPage+=d; renderTable(); }
+        function sortBy(c){ currentSort.col===c?currentSort.dir=currentSort.dir==='asc'?'desc':'asc':(currentSort.col=c,currentSort.dir='asc'); runFilters(); }
+        function clearFilters(){ document.getElementById('search-input').value=''; document.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=false); runFilters(); }
+        async function exportPDF(){ const {jsPDF}=window.jspdf; const d=new jsPDF(); d.text("Lead Export",14,20); d.autoTable({startY:30,head:[['Name','Address','Phone']],body:filteredData.map(r=>[r.Name,r.Address,r.Phone])}); d.save('leads.pdf'); }
     </script>
 </body>
 </html>
