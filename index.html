@@ -1,146 +1,562 @@
-import csv
-import re
-from urllib.parse import unquote, parse_qs, urlparse
-
-INPUT_FILE = "northern_stores_complete.csv"
-OUTPUT_FILE = "northern_stores_cleaned.csv"
-
-def clean_phone(phone_str):
-    """Standardizes phone numbers to (XXX) XXX-XXXX."""
-    if not phone_str or phone_str.lower() in ["n/a", ""]:
-        return "N/A"
-    digits = re.sub(r'\D', '', phone_str)
-    if len(digits) == 10:
-        return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
-    if len(digits) == 11 and digits.startswith('1'):
-        return f"({digits[1:4]}) {digits[4:7]}-{digits[7:]}"
-    return "N/A"
-
-def clean_url(url):
-    """Extracts the real URL from YellowPages redirects."""
-    if not url or url.lower() in ["n/a", ""]:
-        return "N/A"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NorthScrape Leads Dashboard</title>
     
-    # Check if it's a YellowPages redirect
-    if "yellowpages.ca/gourl" in url:
-        try:
-            parsed = urlparse(url)
-            query = parse_qs(parsed.query)
-            if 'redirect' in query:
-                # Get the actual URL
-                real_url = query['redirect'][0]
-                return real_url
-        except:
-            return url
+    <!-- Tailwind CSS for Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- PapaParse for reading CSV files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(229, 231, 235, 0.5);
+        }
+        .dark .glass-panel {
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+        }
+        
+        /* Checkbox custom style */
+        .custom-checkbox {
+            appearance: none;
+            background-color: #fff;
+            margin: 0;
+            font: inherit;
+            color: currentColor;
+            width: 1.25em;
+            height: 1.25em;
+            border: 2px solid #cbd5e1;
+            border-radius: 0.25em;
+            display: grid;
+            place-content: center;
+            cursor: pointer;
+        }
+        .dark .custom-checkbox {
+            background-color: #1e293b;
+            border-color: #475569;
+        }
+        .custom-checkbox::before {
+            content: "";
+            width: 0.65em;
+            height: 0.65em;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em white;
+            transform-origin: center;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+            background-color: #3b82f6; 
+        }
+        .custom-checkbox:checked {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+        }
+        .custom-checkbox:checked::before {
+            transform: scale(1);
+            background-color: white;
+        }
+
+        /* Transitions */
+        body, .bg-white, .bg-slate-50, .bg-slate-100, .bg-slate-900, .bg-slate-800, tr {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen font-sans transition-colors duration-300">
+
+    <!-- Top Navigation -->
+    <nav class="bg-blue-900 dark:bg-slate-900 text-white shadow-lg sticky top-0 z-50 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="candycane" class="h-6 w-6 text-pink-400"></i>
+                    <!-- Truncate title on very small screens -->
+                    <span class="font-bold text-lg sm:text-xl tracking-tight truncate">NorthScrape Dashboard</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-sm text-blue-200 hidden lg:block">
+                        Targeting: Northern Ontario
+                    </div>
+                    <!-- Dark Mode Toggle -->
+                    <button id="theme-toggle" class="p-2 rounded-lg bg-blue-800 dark:bg-slate-800 hover:bg-blue-700 dark:hover:bg-slate-700 transition-colors">
+                        <i data-lucide="moon" id="theme-icon" class="h-5 w-5 text-yellow-300"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        
+        <!-- Stats Row -->
+        <div id="stats-container" class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 hidden">
+            <div class="glass-panel p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-blue-500 flex items-center justify-between">
+                <div>
+                    <p class="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">Total Leads</p>
+                    <p class="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white" id="stat-total">0</p>
+                </div>
+                <div class="p-2 sm:p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full text-blue-600 dark:text-blue-400">
+                    <i data-lucide="users" class="h-5 w-5 sm:h-6 sm:w-6"></i>
+                </div>
+            </div>
             
-    return url
+            <div class="glass-panel p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-green-500 flex items-center justify-between">
+                <div>
+                    <p class="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">With Phone</p>
+                    <p class="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white" id="stat-phones">0</p>
+                </div>
+                <div class="p-2 sm:p-3 bg-green-100 dark:bg-green-900/30 rounded-full text-green-600 dark:text-green-400">
+                    <i data-lucide="phone" class="h-5 w-5 sm:h-6 sm:w-6"></i>
+                </div>
+            </div>
 
-def title_case_address(addr):
-    """Properly formats address casing (e.g., 'parry sound' -> 'Parry Sound')."""
-    if not addr or addr.lower() in ["n/a", ""]:
-        return "N/A"
-    
-    # Capitalize words
-    addr = addr.title()
-    # Fix 'On' to 'ON' for province
-    addr = re.sub(r'\bOn\b', 'ON', addr)
-    # Fix postal codes (L1l 1L1 -> L1L 1L1) - Pattern: LetterDigitLetter
-    addr = re.sub(r'([A-Za-z]\d[A-Za-z])\s?(\d[A-Za-z]\d)', 
-                  lambda m: f"{m.group(1).upper()} {m.group(2).upper()}", addr)
-    return addr
+            <div class="glass-panel p-4 sm:p-6 rounded-xl shadow-sm border-l-4 border-purple-500 flex items-center justify-between">
+                <div>
+                    <p class="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">Pending</p>
+                    <p class="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white" id="stat-pending">0</p>
+                </div>
+                <div class="p-2 sm:p-3 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-600 dark:text-purple-400">
+                    <i data-lucide="list-todo" class="h-5 w-5 sm:h-6 sm:w-6"></i>
+                </div>
+            </div>
+        </div>
 
-def extract_city(address):
-    """Extracts city for sorting purposes."""
-    if not address or address == "N/A": return "ZZZ"
-    # match City, ON
-    match = re.search(r'([^,]+),\s*ON', address, re.IGNORECASE)
-    if match:
-        return match.group(1).strip().upper()
-    return "ZZZ"
+        <!-- Drop Zone (Visible initially) -->
+        <div id="drop-zone" class="border-4 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 sm:p-12 text-center hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors cursor-pointer mb-8">
+            <i data-lucide="upload-cloud" class="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-slate-400 mb-4"></i>
+            <h3 class="text-lg sm:text-xl font-semibold text-slate-700 dark:text-slate-200">Load your Leads</h3>
+            <p class="text-slate-500 dark:text-slate-400 mt-2 text-sm sm:text-base">Drag and drop your exported <strong>.csv</strong> file here</p>
+            <p class="text-xs sm:text-sm text-slate-400 dark:text-slate-500 mt-4">(Or host <code>leads.csv</code> with this page)</p>
+            <input type="file" id="file-input" class="hidden" accept=".csv">
+            <button onclick="document.getElementById('file-input').click()" class="mt-6 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm sm:text-base">Select File</button>
+        </div>
 
-def process_csv():
-    print(f"Reading {INPUT_FILE}...")
-    
-    try:
-        with open(INPUT_FILE, 'r', encoding='utf-8', errors='ignore') as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
-    except FileNotFoundError:
-        print(f"Error: Could not find {INPUT_FILE}")
-        return
-
-    cleaned_data = []
-    seen_phones = set()
-    seen_addresses = set()
-    
-    # 1. First Pass: Cleaning
-    for row in rows:
-        name = row.get('Name', '').strip()
-        raw_addr = row.get('Address', '').strip()
-        raw_phone = row.get('Phone', '').strip()
-        raw_web = row.get('Website', '').strip()
-        
-        # Skip empty rows
-        if not name: continue
-
-        # Cleaning
-        clean_addr = title_case_address(raw_addr)
-        clean_ph = clean_phone(raw_phone)
-        clean_wb = clean_url(raw_web)
-        
-        # Calculate City for sorting
-        city = extract_city(clean_addr)
-        
-        cleaned_data.append({
-            "Name": name,
-            "Address": clean_addr,
-            "Phone": clean_ph,
-            "Website": clean_wb,
-            "_city": city, # Temporary helper for sorting
-            "_has_phone": 1 if clean_ph != "N/A" else 0 # Priority
-        })
-
-    # 2. Sort Data
-    # Sort by: Has Phone (Desc), City (Asc), Name (Asc)
-    # This ensures that if we have duplicates, the one WITH the phone number comes first
-    cleaned_data.sort(key=lambda x: (-x['_has_phone'], x['_city'], x['Name']))
-
-    # 3. Deduplication
-    final_rows = []
-    
-    print("Deduplicating...")
-    for row in cleaned_data:
-        # Strategy 1: Check Phone Number (if exists)
-        if row['Phone'] != "N/A":
-            if row['Phone'] in seen_phones:
-                continue # Skip duplicate phone
-            seen_phones.add(row['Phone'])
+        <!-- Controls & Data (Hidden initially) -->
+        <div id="data-container" class="hidden animate-fade-in">
             
-        # Strategy 2: Check Address + Name Similarity (if no phone or unique phone)
-        # We use a simplified address key (first 10 chars) to catch slight variations
-        addr_key = row['Address'][:15].lower() if row['Address'] != "N/A" else "no_addr"
-        
-        # If we have this address already, we might want to skip, UNLESS the name is very different
-        # For simplicity in this script, we assume one business per address
-        if addr_key != "no_addr" and addr_key in seen_addresses:
-             # Check if we already have this address
-             continue
-        
-        if addr_key != "no_addr":
-            seen_addresses.add(addr_key)
+            <!-- Controls Bar -->
+            <div class="flex flex-col lg:flex-row gap-4 mb-6">
+                <!-- Search -->
+                <div class="relative flex-grow">
+                    <i data-lucide="search" class="absolute left-3 top-3 h-5 w-5 text-slate-400"></i>
+                    <input type="text" id="search-input" placeholder="Search..." 
+                           class="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base">
+                </div>
+                
+                <!-- Filters -->
+                <div class="flex flex-wrap gap-2 items-center justify-between sm:justify-start">
+                    <label class="flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition flex-1 sm:flex-none justify-center">
+                        <input type="checkbox" id="filter-phones" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                        <span class="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">Has Phone</span>
+                    </label>
+
+                    <label class="flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition flex-1 sm:flex-none justify-center">
+                        <input type="checkbox" id="filter-uncontacted" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                        <span class="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">Pending</span>
+                    </label>
+
+                    <div class="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                        <button onclick="clearFilters()" class="flex-1 sm:flex-none px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-medium">Reset</button>
+                        
+                        <button onclick="exportFiltered()" class="flex-1 sm:flex-none px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium flex items-center justify-center gap-2">
+                            <i data-lucide="download" class="h-4 w-4"></i> Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DESKTOP VIEW: Table (Hidden on Mobile) -->
+            <div class="hidden md:block bg-white dark:bg-slate-800 rounded-xl shadow-lg overflow-hidden border border-slate-200 dark:border-slate-700 transition-colors">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                        <thead class="bg-slate-50 dark:bg-slate-900">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16">Status</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Business Name</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Location</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Phone</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+                            <!-- Rows inserted via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- MOBILE VIEW: Cards (Visible only on Mobile) -->
+            <div id="mobile-cards" class="md:hidden space-y-4">
+                <!-- Cards inserted via JS -->
+            </div>
             
-        # Remove temporary keys before saving
-        final_row = {k: v for k, v in row.items() if not k.startswith('_')}
-        final_rows.append(final_row)
+            <div id="no-results" class="hidden p-8 text-center text-slate-500 dark:text-slate-400">
+                No matching clients found.
+            </div>
+            
+            <!-- Pagination Footer -->
+            <div class="mt-4 md:mt-0 bg-slate-50 dark:bg-slate-900 md:rounded-b-xl px-4 md:px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl md:rounded-t-none shadow-sm md:shadow-none border md:border-t">
+                <span id="showing-count" class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 text-center sm:text-left">Showing 0 results</span>
+                
+                <div class="flex items-center gap-4">
+                    <span class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                        Page <span id="current-page-display" class="font-bold text-slate-700 dark:text-slate-200">1</span> of <span id="total-pages-display" class="font-bold text-slate-700 dark:text-slate-200">1</span>
+                    </span>
+                    <div class="flex gap-2">
+                        <button id="btn-prev" onclick="changePage(-1)" disabled class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Prev</button>
+                        <button id="btn-next" onclick="changePage(1)" disabled class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
 
-    # 4. Write Output
-    with open(OUTPUT_FILE, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=["Name", "Address", "Phone", "Website"])
-        writer.writeheader()
-        writer.writerows(final_rows)
+    <script>
+        // --- State ---
+        let allData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        const rowsPerPage = 50;
         
-    print(f"Success! Processed {len(rows)} rows into {len(final_rows)} unique entries.")
-    print(f"Saved to {OUTPUT_FILE}")
+        // --- Dark Mode Logic ---
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            themeIcon.setAttribute('data-lucide', 'sun');
+        } else {
+            document.documentElement.classList.remove('dark');
+            themeIcon.setAttribute('data-lucide', 'moon');
+        }
 
-if __name__ == "__main__":
-    process_csv()
+        themeToggleBtn.addEventListener('click', () => {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+                themeIcon.setAttribute('data-lucide', 'moon');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+                themeIcon.setAttribute('data-lucide', 'sun');
+            }
+            lucide.createIcons();
+        });
+
+        // --- Init ---
+        lucide.createIcons();
+        
+        fetch('leads.csv').then(response => {
+            if (response.ok) {
+                response.text().then(csvText => {
+                    parseCSV(csvText);
+                });
+            }
+        }).catch(() => console.log("No auto-load file found"));
+
+        // --- Event Listeners ---
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const searchInput = document.getElementById('search-input');
+        const filterPhones = document.getElementById('filter-phones');
+        const filterUncontacted = document.getElementById('filter-uncontacted');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-blue-500', 'bg-blue-50', 'dark:bg-slate-800');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-slate-800');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-slate-800');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+
+        searchInput.addEventListener('input', runFilters);
+        filterPhones.addEventListener('change', runFilters);
+        filterUncontacted.addEventListener('change', runFilters);
+
+        // --- Logic ---
+
+        function handleFile(file) {
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    const headers = results.meta.fields;
+                    if (!headers.includes("Name") && !headers.includes("Address")) {
+                        alert("Invalid CSV format. Please use the export from NorthScrape.");
+                        return;
+                    }
+                    allData = results.data.map((row) => ({
+                        ...row,
+                        id: btoa(unescape(encodeURIComponent((row.Name || '') + (row.Address || '')))).substring(0, 16)
+                    }));
+                    initDashboard();
+                }
+            });
+        }
+
+        function parseCSV(csvText) {
+            const results = Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true
+            });
+            allData = results.data.map((row) => ({
+                ...row,
+                id: btoa(unescape(encodeURIComponent((row.Name || '') + (row.Address || '')))).substring(0, 16)
+            }));
+            initDashboard();
+        }
+
+        function initDashboard() {
+            document.getElementById('drop-zone').classList.add('hidden');
+            document.getElementById('stats-container').classList.remove('hidden');
+            document.getElementById('stats-container').classList.add('grid');
+            document.getElementById('data-container').classList.remove('hidden');
+            
+            updateStats();
+            runFilters();
+        }
+
+        function updateStats() {
+            const total = allData.length;
+            const withPhones = allData.filter(d => d.Phone && d.Phone !== 'N/A' && d.Phone !== '').length;
+            const contacted = getContactedList();
+            const pending = total - allData.filter(d => contacted.includes(d.id)).length;
+
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-phones').innerText = withPhones;
+            document.getElementById('stat-pending').innerText = pending;
+        }
+        
+        function getContactedList() {
+            const stored = localStorage.getItem('contacted_leads');
+            return stored ? JSON.parse(stored) : [];
+        }
+
+        function toggleContacted(id) {
+            let contacted = getContactedList();
+            if (contacted.includes(id)) {
+                contacted = contacted.filter(i => i !== id);
+            } else {
+                contacted.push(id);
+            }
+            localStorage.setItem('contacted_leads', JSON.stringify(contacted));
+            updateStats();
+            if (filterUncontacted.checked) {
+                runFilters();
+            } else {
+                renderTable();
+            }
+        }
+
+        function runFilters() {
+            const query = searchInput.value.toLowerCase();
+            const phonesOnly = filterPhones.checked;
+            const uncontactedOnly = filterUncontacted.checked;
+            const contactedList = getContactedList();
+
+            filteredData = allData.filter(row => {
+                const name = (row.Name || '').toLowerCase();
+                const address = (row.Address || '').toLowerCase();
+                const phone = (row.Phone || '').toLowerCase();
+                const matchesText = name.includes(query) || address.includes(query) || phone.includes(query);
+                const hasPhone = row.Phone && row.Phone !== 'N/A' && row.Phone !== '';
+                const matchesPhone = !phonesOnly || hasPhone;
+                const isContacted = contactedList.includes(row.id);
+                const matchesContacted = !uncontactedOnly || !isContacted;
+                return matchesText && matchesPhone && matchesContacted;
+            });
+            
+            currentPage = 1;
+            renderTable();
+        }
+        
+        function clearFilters() {
+            searchInput.value = '';
+            filterPhones.checked = false;
+            filterUncontacted.checked = false;
+            runFilters();
+        }
+
+        function changePage(direction) {
+            const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+            const newPage = currentPage + direction;
+            if (newPage > 0 && newPage <= totalPages) {
+                currentPage = newPage;
+                renderTable();
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            const mobileContainer = document.getElementById('mobile-cards');
+            tbody.innerHTML = '';
+            mobileContainer.innerHTML = '';
+            
+            const contactedList = getContactedList();
+            const totalRows = filteredData.length;
+            const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
+
+            if (totalRows === 0) {
+                document.getElementById('no-results').classList.remove('hidden');
+                document.getElementById('showing-count').innerText = "Showing 0 results";
+            } else {
+                document.getElementById('no-results').classList.add('hidden');
+            }
+
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, totalRows);
+            const pageData = filteredData.slice(startIndex, endIndex);
+
+            if (totalRows > 0) {
+                document.getElementById('showing-count').innerText = `Showing ${startIndex + 1} to ${endIndex} of ${totalRows} results`;
+            } else {
+                document.getElementById('showing-count').innerText = `Showing 0 results`;
+            }
+            
+            document.getElementById('current-page-display').innerText = currentPage;
+            document.getElementById('total-pages-display').innerText = totalPages;
+
+            document.getElementById('btn-prev').disabled = currentPage === 1;
+            document.getElementById('btn-next').disabled = currentPage === totalPages || totalRows === 0;
+
+            pageData.forEach(row => {
+                const isContacted = contactedList.includes(row.id);
+                const hasPhone = row.Phone && row.Phone !== 'N/A' && row.Phone !== '';
+                
+                // --- Desktop Table Row ---
+                const tr = document.createElement('tr');
+                if (isContacted) {
+                    tr.classList.add('opacity-50', 'bg-slate-50', 'dark:bg-slate-800/50');
+                }
+                tr.className += " border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors";
+
+                const checkboxCell = `<td class="px-6 py-4">
+                    <input type="checkbox" class="custom-checkbox" 
+                           ${isContacted ? 'checked' : ''} 
+                           onclick="toggleContacted('${row.id}')">
+                </td>`;
+                
+                const nameCell = `<td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-bold text-slate-900 dark:text-white ${isContacted ? 'line-through decoration-slate-400' : ''}">${row.Name || 'Unknown'}</div>
+                    ${row.Website && row.Website !== 'N/A' ? 
+                        `<a href="${row.Website}" target="_blank" class="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-1">
+                           Visit Website <i data-lucide="external-link" class="h-3 w-3"></i>
+                        </a>` : ''}
+                </td>`;
+
+                const addressCell = `<td class="px-6 py-4">
+                    <div class="text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate" title="${row.Address}">${row.Address || 'N/A'}</div>
+                </td>`;
+
+                const phoneCell = `<td class="px-6 py-4 whitespace-nowrap">
+                    ${hasPhone ? 
+                        `<a href="tel:${row.Phone}" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800 transition-colors">
+                           <i data-lucide="phone" class="h-3 w-3 mr-1"></i> ${row.Phone}
+                         </a>` 
+                        : '<span class="text-slate-400 dark:text-slate-600 text-sm italic">N/A</span>'}
+                </td>`;
+
+                const actionCell = `<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.Name + ' ' + row.Address)}" target="_blank" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1">
+                        Map <i data-lucide="map" class="h-4 w-4"></i>
+                    </a>
+                </td>`;
+
+                tr.innerHTML = checkboxCell + nameCell + addressCell + phoneCell + actionCell;
+                tbody.appendChild(tr);
+
+                // --- Mobile Card ---
+                const card = document.createElement('div');
+                card.className = `bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-4 ${isContacted ? 'opacity-60 bg-slate-50 dark:bg-slate-900' : ''}`;
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-1 pr-2">
+                            <h3 class="font-bold text-slate-900 dark:text-white ${isContacted ? 'line-through decoration-slate-400' : ''}">${row.Name || 'Unknown'}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">${row.Address || 'N/A'}</p>
+                        </div>
+                        <input type="checkbox" class="custom-checkbox flex-shrink-0 mt-1" 
+                           ${isContacted ? 'checked' : ''} 
+                           onclick="toggleContacted('${row.id}')">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3 mt-4">
+                        ${hasPhone ? 
+                        `<a href="tel:${row.Phone}" class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100 font-medium text-sm">
+                           <i data-lucide="phone" class="h-4 w-4"></i> Call
+                         </a>` : 
+                         `<div class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 font-medium text-sm">
+                            No Phone
+                          </div>`
+                        }
+                        
+                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.Name + ' ' + row.Address)}" target="_blank" class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100 font-medium text-sm">
+                           <i data-lucide="map" class="h-4 w-4"></i> Map
+                        </a>
+                    </div>
+                `;
+                mobileContainer.appendChild(card);
+            });
+            
+            lucide.createIcons();
+            
+            if (document.getElementById('data-container')) {
+                 document.getElementById('data-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function exportFiltered() {
+            const csv = Papa.unparse(filteredData);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "filtered_leads.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+    </script>
+</body>
+</html>
