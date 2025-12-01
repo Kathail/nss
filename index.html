@@ -626,8 +626,8 @@
                     
                     <div class="grid grid-cols-2 gap-3 mt-4">
                         ${hasPhone ? 
-                        `<a href="tel:${row.Phone}" class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100 font-medium text-sm">
-                           <i data-lucide="phone" class="h-4 w-4"></i> Call
+                        `<a href="tel:${row.Phone}" class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100 font-medium text-sm whitespace-nowrap">
+                           <i data-lucide="phone" class="h-4 w-4"></i> ${row.Phone}
                          </a>` : 
                          `<div class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 font-medium text-sm">
                             No Phone
