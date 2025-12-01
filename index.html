@@ -86,7 +86,7 @@
         }
     </style>
 </head>
-<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen font-sans transition-colors duration-300">
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen font-sans transition-colors duration-300 pb-24">
 
     <!-- Top Navigation -->
     <nav class="bg-blue-900 dark:bg-slate-900 text-white shadow-lg sticky top-0 z-50 transition-colors duration-300">
@@ -201,11 +201,14 @@
                     <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                         <thead class="bg-slate-50 dark:bg-slate-900">
                             <tr>
-                                <th scope="col" onclick="sortBy('status')" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-24 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none group">
+                                <th scope="col" onclick="sortBy('status')" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none group" title="Contact Status">
                                     <div class="flex items-center gap-1">
-                                        Status
+                                        <i data-lucide="check-square" class="h-4 w-4"></i>
                                         <i data-lucide="arrow-up-down" class="h-3 w-3 text-slate-300 group-hover:text-slate-500 sort-icon" id="sort-icon-status"></i>
                                     </div>
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16" title="Add to Route">
+                                    <i data-lucide="map-pin" class="h-4 w-4"></i>
                                 </th>
                                 <th scope="col" onclick="sortBy('Name')" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none group">
                                     <div class="flex items-center gap-1">
@@ -261,6 +264,17 @@
         </div>
     </main>
 
+    <!-- Floating Route Button -->
+    <div id="route-fab" class="fixed bottom-6 right-6 transition-transform duration-300 transform translate-y-24">
+        <button onclick="launchRoute()" class="group flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full shadow-xl hover:shadow-2xl transition-all">
+            <i data-lucide="navigation" class="h-5 w-5"></i>
+            <span class="font-bold">Navigate (<span id="route-count">0</span>)</span>
+        </button>
+        <div id="route-warning" class="absolute -top-10 right-0 bg-red-100 border border-red-200 text-red-700 text-xs px-3 py-1 rounded shadow-lg hidden whitespace-nowrap">
+            Route limits may apply (>10 stops)
+        </div>
+    </div>
+
     <script>
         // --- State ---
         let allData = [];
@@ -270,6 +284,9 @@
         
         // Sort State
         let currentSort = { column: null, direction: 'asc' };
+        
+        // Route State
+        let routeSet = new Set();
         
         // --- Dark Mode Logic ---
         const themeToggleBtn = document.getElementById('theme-toggle');
@@ -366,6 +383,8 @@
                     filterUncontacted.checked = false;
                     currentSort = { column: null, direction: 'asc' };
                     updateSortIcons();
+                    routeSet.clear();
+                    updateRouteUI();
                     
                     initDashboard();
                 }
@@ -426,6 +445,51 @@
             }
         }
 
+        // --- Route Logic ---
+        function toggleRoute(id) {
+            if (routeSet.has(id)) {
+                routeSet.delete(id);
+            } else {
+                routeSet.add(id);
+            }
+            updateRouteUI();
+            renderTable(); // Re-render to update icon states
+        }
+
+        function updateRouteUI() {
+            const fab = document.getElementById('route-fab');
+            const countSpan = document.getElementById('route-count');
+            const warning = document.getElementById('route-warning');
+            
+            countSpan.innerText = routeSet.size;
+            
+            if (routeSet.size > 0) {
+                fab.classList.remove('translate-y-24'); // Slide up
+            } else {
+                fab.classList.add('translate-y-24'); // Slide down
+            }
+
+            if (routeSet.size > 10) {
+                warning.classList.remove('hidden');
+            } else {
+                warning.classList.add('hidden');
+            }
+        }
+
+        function launchRoute() {
+            if (routeSet.size === 0) return;
+            
+            // Collect addresses from selected IDs
+            const stops = allData.filter(row => routeSet.has(row.id)).map(row => encodeURIComponent(row.Address));
+            
+            // Construct Google Maps URL
+            // Format: https://www.google.com/maps/dir/Current+Location/Stop1/Stop2/...
+            let url = "https://www.google.com/maps/dir/Current+Location/";
+            url += stops.join("/");
+            
+            window.open(url, '_blank');
+        }
+
         // --- Sort Logic ---
         function sortBy(column) {
             if (currentSort.column === column) {
@@ -436,18 +500,16 @@
             }
             
             updateSortIcons();
-            runFilters(); // Re-runs filter AND sort
+            runFilters();
         }
 
         function updateSortIcons() {
-            // Reset all icons
             document.querySelectorAll('.sort-icon').forEach(icon => {
                 icon.setAttribute('data-lucide', 'arrow-up-down');
                 icon.classList.remove('text-blue-500');
                 icon.classList.add('text-slate-300');
             });
             
-            // Set active icon
             if (currentSort.column) {
                 const iconId = `sort-icon-${currentSort.column}`;
                 const activeIcon = document.getElementById(iconId);
@@ -478,22 +540,17 @@
                 return matchesText && matchesPhone && matchesContacted;
             });
             
-            // Apply Sort
             if (currentSort.column) {
                 filteredData.sort((a, b) => {
                     let valA, valB;
-                    
-                    // Handle Special Column: Status (Contacted or Not)
                     if (currentSort.column === 'status') {
                          valA = contactedList.includes(a.id) ? 1 : 0;
                          valB = contactedList.includes(b.id) ? 1 : 0;
                     } 
-                    // Handle Special Column: Phone (Has Phone vs No Phone)
                     else if (currentSort.column === 'Phone') {
                          const hasA = (a.Phone && a.Phone !== 'N/A') ? 1 : 0;
                          const hasB = (b.Phone && b.Phone !== 'N/A') ? 1 : 0;
-                         // Sort by existence first
-                         if (hasA !== hasB) return hasB - hasA; // Existing phones first
+                         if (hasA !== hasB) return hasB - hasA;
                          valA = (a.Phone || '').toLowerCase();
                          valB = (b.Phone || '').toLowerCase();
                     }
@@ -501,7 +558,6 @@
                         valA = (a[currentSort.column] || '').toLowerCase();
                         valB = (b[currentSort.column] || '').toLowerCase();
                     }
-
                     if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
                     if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
                     return 0;
@@ -566,6 +622,7 @@
             pageData.forEach(row => {
                 const isContacted = contactedList.includes(row.id);
                 const hasPhone = row.Phone && row.Phone !== 'N/A' && row.Phone !== '';
+                const inRoute = routeSet.has(row.id);
                 
                 // --- Desktop Table Row ---
                 const tr = document.createElement('tr');
@@ -578,6 +635,13 @@
                     <input type="checkbox" class="custom-checkbox" 
                            ${isContacted ? 'checked' : ''} 
                            onclick="toggleContacted('${row.id}')">
+                </td>`;
+                
+                // Route Toggle Cell
+                const routeCell = `<td class="px-6 py-4">
+                    <button onclick="toggleRoute('${row.id}')" class="p-2 rounded-full transition-colors ${inRoute ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}">
+                        <i data-lucide="map-pin" class="h-5 w-5 ${inRoute ? 'fill-current' : ''}"></i>
+                    </button>
                 </td>`;
                 
                 const nameCell = `<td class="px-6 py-4 whitespace-nowrap">
@@ -606,7 +670,7 @@
                     </a>
                 </td>`;
 
-                tr.innerHTML = checkboxCell + nameCell + addressCell + phoneCell + actionCell;
+                tr.innerHTML = checkboxCell + routeCell + nameCell + addressCell + phoneCell + actionCell;
                 tbody.appendChild(tr);
 
                 // --- Mobile Card ---
@@ -619,9 +683,14 @@
                             <h3 class="font-bold text-slate-900 dark:text-white ${isContacted ? 'line-through decoration-slate-400' : ''}">${row.Name || 'Unknown'}</h3>
                             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">${row.Address || 'N/A'}</p>
                         </div>
-                        <input type="checkbox" class="custom-checkbox flex-shrink-0 mt-1" 
-                           ${isContacted ? 'checked' : ''} 
-                           onclick="toggleContacted('${row.id}')">
+                        <div class="flex flex-col gap-2">
+                            <input type="checkbox" class="custom-checkbox flex-shrink-0" 
+                                ${isContacted ? 'checked' : ''} 
+                                onclick="toggleContacted('${row.id}')">
+                            <button onclick="toggleRoute('${row.id}')" class="p-1 rounded-full ${inRoute ? 'text-blue-600 dark:text-blue-300' : 'text-slate-300'}">
+                                <i data-lucide="map-pin" class="h-6 w-6 ${inRoute ? 'fill-current' : ''}"></i>
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="grid grid-cols-2 gap-3 mt-4">
@@ -645,7 +714,7 @@
             lucide.createIcons();
             
             if (document.getElementById('data-container')) {
-                 document.getElementById('data-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                 // document.getElementById('data-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
 
