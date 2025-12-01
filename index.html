@@ -201,10 +201,30 @@
                     <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                         <thead class="bg-slate-50 dark:bg-slate-900">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16">Status</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Business Name</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Location</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Phone</th>
+                                <th scope="col" onclick="sortBy('status')" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-24 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none group">
+                                    <div class="flex items-center gap-1">
+                                        Status
+                                        <i data-lucide="arrow-up-down" class="h-3 w-3 text-slate-300 group-hover:text-slate-500 sort-icon" id="sort-icon-status"></i>
+                                    </div>
+                                </th>
+                                <th scope="col" onclick="sortBy('Name')" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none group">
+                                    <div class="flex items-center gap-1">
+                                        Business Name
+                                        <i data-lucide="arrow-up-down" class="h-3 w-3 text-slate-300 group-hover:text-slate-500 sort-icon" id="sort-icon-Name"></i>
+                                    </div>
+                                </th>
+                                <th scope="col" onclick="sortBy('Address')" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none group">
+                                    <div class="flex items-center gap-1">
+                                        Location
+                                        <i data-lucide="arrow-up-down" class="h-3 w-3 text-slate-300 group-hover:text-slate-500 sort-icon" id="sort-icon-Address"></i>
+                                    </div>
+                                </th>
+                                <th scope="col" onclick="sortBy('Phone')" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none group">
+                                    <div class="flex items-center gap-1">
+                                        Phone
+                                        <i data-lucide="arrow-up-down" class="h-3 w-3 text-slate-300 group-hover:text-slate-500 sort-icon" id="sort-icon-Phone"></i>
+                                    </div>
+                                </th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Action</th>
                             </tr>
                         </thead>
@@ -247,6 +267,9 @@
         let filteredData = [];
         let currentPage = 1;
         const rowsPerPage = 50;
+        
+        // Sort State
+        let currentSort = { column: null, direction: 'asc' };
         
         // --- Dark Mode Logic ---
         const themeToggleBtn = document.getElementById('theme-toggle');
@@ -308,7 +331,6 @@
             if (file) handleFile(file);
         });
 
-        // Reset file input value on click to allow re-importing same file if needed
         fileInput.addEventListener('click', (e) => {
             e.target.value = null;
         });
@@ -339,10 +361,11 @@
                         id: btoa(unescape(encodeURIComponent((row.Name || '') + (row.Address || '')))).substring(0, 16)
                     }));
                     
-                    // Reset filters on new file import to ensure visibility
                     searchInput.value = '';
                     filterPhones.checked = false;
                     filterUncontacted.checked = false;
+                    currentSort = { column: null, direction: 'asc' };
+                    updateSortIcons();
                     
                     initDashboard();
                 }
@@ -403,6 +426,40 @@
             }
         }
 
+        // --- Sort Logic ---
+        function sortBy(column) {
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+            
+            updateSortIcons();
+            runFilters(); // Re-runs filter AND sort
+        }
+
+        function updateSortIcons() {
+            // Reset all icons
+            document.querySelectorAll('.sort-icon').forEach(icon => {
+                icon.setAttribute('data-lucide', 'arrow-up-down');
+                icon.classList.remove('text-blue-500');
+                icon.classList.add('text-slate-300');
+            });
+            
+            // Set active icon
+            if (currentSort.column) {
+                const iconId = `sort-icon-${currentSort.column}`;
+                const activeIcon = document.getElementById(iconId);
+                if (activeIcon) {
+                    activeIcon.setAttribute('data-lucide', currentSort.direction === 'asc' ? 'arrow-up' : 'arrow-down');
+                    activeIcon.classList.remove('text-slate-300');
+                    activeIcon.classList.add('text-blue-500');
+                }
+            }
+            lucide.createIcons();
+        }
+
         function runFilters() {
             const query = searchInput.value.toLowerCase();
             const phonesOnly = filterPhones.checked;
@@ -421,6 +478,36 @@
                 return matchesText && matchesPhone && matchesContacted;
             });
             
+            // Apply Sort
+            if (currentSort.column) {
+                filteredData.sort((a, b) => {
+                    let valA, valB;
+                    
+                    // Handle Special Column: Status (Contacted or Not)
+                    if (currentSort.column === 'status') {
+                         valA = contactedList.includes(a.id) ? 1 : 0;
+                         valB = contactedList.includes(b.id) ? 1 : 0;
+                    } 
+                    // Handle Special Column: Phone (Has Phone vs No Phone)
+                    else if (currentSort.column === 'Phone') {
+                         const hasA = (a.Phone && a.Phone !== 'N/A') ? 1 : 0;
+                         const hasB = (b.Phone && b.Phone !== 'N/A') ? 1 : 0;
+                         // Sort by existence first
+                         if (hasA !== hasB) return hasB - hasA; // Existing phones first
+                         valA = (a.Phone || '').toLowerCase();
+                         valB = (b.Phone || '').toLowerCase();
+                    }
+                    else {
+                        valA = (a[currentSort.column] || '').toLowerCase();
+                        valB = (b[currentSort.column] || '').toLowerCase();
+                    }
+
+                    if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
+                    if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
+                    return 0;
+                });
+            }
+
             currentPage = 1;
             renderTable();
         }
@@ -429,6 +516,8 @@
             searchInput.value = '';
             filterPhones.checked = false;
             filterUncontacted.checked = false;
+            currentSort = { column: null, direction: 'asc' };
+            updateSortIcons();
             runFilters();
         }
 
