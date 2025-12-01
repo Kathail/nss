@@ -45,7 +45,7 @@
             border: 1px solid rgba(71, 85, 105, 0.5);
         }
         
-        /* Checkbox custom style */
+        /* Checkbox custom style (Keep for desktop) */
         .custom-checkbox {
             appearance: none;
             background-color: #fff;
@@ -683,7 +683,8 @@
 
                 // --- Mobile Card ---
                 const card = document.createElement('div');
-                card.className = `bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-4 ${isContacted ? 'opacity-60 bg-slate-50 dark:bg-slate-900' : ''}`;
+                card.className = `bg-white dark:bg-slate-800 rounded-lg shadow border border-slate-200 dark:border-slate-700 p-4 ${isContacted ? 'opacity-60 bg-slate-50 dark:bg-slate-900' : ''} cursor-pointer transition-colors active:bg-slate-50 dark:active:bg-slate-700 select-none`;
+                card.onclick = () => toggleContacted(row.id);
                 
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-2">
@@ -691,27 +692,22 @@
                             <h3 class="font-bold text-slate-900 dark:text-white ${isContacted ? 'line-through decoration-slate-400' : ''}">${row.Name || 'Unknown'}</h3>
                             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">${row.Address || 'N/A'}</p>
                         </div>
-                        <div class="flex flex-col gap-2">
-                            <input type="checkbox" class="custom-checkbox flex-shrink-0" 
-                                ${isContacted ? 'checked' : ''} 
-                                onclick="toggleContacted('${row.id}')">
-                            <button onclick="toggleRoute('${row.id}')" class="p-1 rounded-full ${inRoute ? 'text-blue-600 dark:text-blue-300' : 'text-slate-300'}">
-                                <i data-lucide="map-pin" class="h-6 w-6 ${inRoute ? 'fill-current' : ''}"></i>
-                            </button>
-                        </div>
+                        <button onclick="event.stopPropagation(); toggleRoute('${row.id}')" class="p-2 -mr-2 rounded-full ${inRoute ? 'text-blue-600 dark:text-blue-300' : 'text-slate-300'}">
+                            <i data-lucide="map-pin" class="h-6 w-6 ${inRoute ? 'fill-current' : ''}"></i>
+                        </button>
                     </div>
                     
                     <div class="grid grid-cols-2 gap-3 mt-4">
                         ${hasPhone ? 
-                        `<a href="tel:${row.Phone}" class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100 font-medium text-xs sm:text-sm text-center">
-                           <i data-lucide="phone" class="h-4 w-4 flex-shrink-0"></i> <span>${row.Phone}</span>
+                        `<a href="tel:${row.Phone}" onclick="event.stopPropagation()" class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100 font-medium text-sm">
+                           <i data-lucide="phone" class="h-4 w-4"></i> ${row.Phone}
                          </a>` : 
-                         `<div class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 font-medium text-xs sm:text-sm">
+                         `<div class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500 font-medium text-sm">
                             No Phone
                           </div>`
                         }
                         
-                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.Name + ' ' + row.Address)}" target="_blank" class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100 font-medium text-xs sm:text-sm">
+                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.Name + ' ' + row.Address)}" target="_blank" onclick="event.stopPropagation()" class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100 font-medium text-sm">
                            <i data-lucide="map" class="h-4 w-4"></i> Map
                         </a>
                     </div>
